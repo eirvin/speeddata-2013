@@ -23,7 +23,7 @@ where yr = 2013 and dow > 1 and dow <7;
 It's important to run a vaccuum analyze at this point so that the database can actually use the index.
 
 ## Speed by Link and Epoch ##
-the linkspd_epoch_2013 contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering.
+The linkspd_epoch_2013 table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering.
 
 ```
 create table linkspd_epoch_2013 as 
@@ -41,7 +41,20 @@ from epoch_lookup
 where epoch_lookup.epoch = linkspd_epoch_2013.epoch
 ```
 ## Speed by link and time period 
-This table has a unique record for each link (TMC) and columns for average speeds at different time periods. It's good for joining to shapefiles because there is only one record per link.
+The linkmedspd_2013 table has a unique record for each link (TMC) and fields with average speeds at  the following nine time periods:
+* **free flow:** 8:00 pm - 5:30 am
+* **am shoulder 1:** 6:00 am - 7:00 am
+* **am peak:** 7:00 am - 9:00 am
+* **am shoulder 2:** 9:00 am - 10:00 am
+* **mid-day:** 10:00 am - 2:00 pm
+* **pm shoulder 1:** 2:00 pm - 4:00 pm
+* **pm peak:** 4:00 pm - 6:00 pm
+* **pm shoulder 2:** 6:00 pm - 8:00 pm
+* **overnight:** 8:00 pm - 6:00 am
+
+_Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the *maximum free-flow* discussion below for further elaboration on the final free flow speed calculation._
+
+It's good for joining to shapefiles because there is only one record per link.
 ```
 create table linkmedspd_2013 (
 link_id,
@@ -80,20 +93,7 @@ create index linkmedspd_linkidx on linkmedspd_2013(link_id);
 ```
 again, run vaccuum analyze on the table before proceeding in order to take advantage of processing efficiencies.
 
-the next set of queries computes the weighted average speed and sample size in nine periods:
-* **free flow:** 8:00 pm - 5:30 am
-* **am shoulder 1:** 6:00 am - 7:00 am
-* **am peak:** 7:00 am - 9:00 am
-* **am shoulder 2:** 9:00 am - 10:00 am
-* **mid-day:** 10:00 am - 2:00 pm
-* **pm shoulder 1:** 2:00 pm - 4:00 pm
-* **pm peak:** 4:00 pm - 6:00 pm
-* **pm shoulder 2:** 6:00 pm - 8:00 pm
-* **overnight:** 8:00 pm - 6:00 am
-
-_Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the *maximum free-flow* discussion below for further elaboration on the final free flow speed calculation._
-
-For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see *planning time index* below).
+The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see *planning time index* below).
 
 ```
 create or replace view linkspdff as
