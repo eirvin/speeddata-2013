@@ -243,9 +243,9 @@ Since we are computing planning time for each link, (meaning that travel distanc
 
 	median speed / 5th percentile speed
 
-We used the median of the median (`am_perc_50_median` and `pm_perc_50_median`) and the 5th percentile of the median ( `am_perc_05_median` and `pm_perc_05_median`) to avoid outliers skewing the data. **Therefore, this statistic tells us how predictable the average morning or evening peak is.** 
+We used the median of the median (`am_perc_50_median` or `pm_perc_50_median`) and the 5th percentile of the median ( `am_perc_05_median` or `pm_perc_05_median`) to avoid outliers skewing the data. **Therefore, this statistic tells us how predictable the average morning or evening peak is.** 
 
-The other option is to use the ratio of weighted average of the median (the period speed) to the weighted average of the 5th percentile (`am_wtd_mean_05th` and `pm_wtd_mean_05th`, also contained in the table). This statistic, *not computed in the table but easily computable in arcgis or excel*, would show the predictability experienced on that link by the average vehicle. Note that this second measure would be much more sensitive to outliers and data errors. 
+The other option is to use the ratio of weighted average of the median (`am_peak_spd` or `pm_peak_spd`) to the weighted average of the 5th percentile (`am_wtd_mean_05th` or `pm_wtd_mean_05th`, also contained in the table). This statistic, *not computed in the table but easily computable in arcgis or excel*, would show the predictability experienced on that link by the average vehicle. Note that this second measure would be much more sensitive to outliers and data errors. 
 
 ```
 update trafficdata.linkmedspd_2013
