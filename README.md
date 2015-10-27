@@ -2,7 +2,7 @@
 
 ## The Raw Data
 
-The table spdidx contains the raw data, which includes link id, epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
+The table `spdidx` contains the raw data, which includes link id, epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
 
 ```
 alter table spdidx
@@ -23,7 +23,7 @@ where yr = 2013 and dow > 1 and dow <7;
 It's important to run a vaccuum analyze at this point so that the database can actually use the index.
 
 ## Speed by Link and Epoch ##
-The linkspd_epoch_2013 table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering.
+The `linkspd_epoch_2013` table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering.
 
 ```
 create table linkspd_epoch_2013 as 
@@ -41,7 +41,7 @@ from epoch_lookup
 where epoch_lookup.epoch = linkspd_epoch_2013.epoch
 ```
 ## Speed by link and time period 
-The linkmedspd_2013 table has a unique record for each link (TMC) and fields with average speeds at  the following nine time periods:
+The `linkmedspd_2013` table has a unique record for each link (TMC) and fields with average speeds at  the following nine time periods:
 * **free flow:** 8:00 pm - 5:30 am
 * **am shoulder 1:** 6:00 am - 7:00 am
 * **am peak:** 7:00 am - 9:00 am
@@ -215,7 +215,7 @@ update linkmedspd_2013
 set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
 ```
 ## Maximum Free Flow speed
-The strategy for computing free flow speed using the 8 pm to 5:30 am period turns out to have a few problems. In some cases, links have such small traffic volumes overnight that they don't have a free flow speed. In other cases, the free flow period speed ends up being slower than the speed on that link in other periods. By definition, free flow speeds should be the fastest average speeds on the link-- otherwise the metrics computed from it (benefits of congestion reduction, for example) would be misleading. Therefore the max_ff_speed and max_ff_period fields contain the maximum average speed on the link and the time period in which those speeds occur.
+The strategy for computing free flow speed using the 8 pm to 5:30 am period turns out to have a few problems. In some cases, links have such small traffic volumes overnight that they don't have a free flow speed. In other cases, the free flow period speed ends up being slower than the speed on that link in other periods. By definition, free flow speeds should be the fastest average speeds on the link-- otherwise the metrics computed from it (benefits of congestion reduction, for example) would be misleading. Therefore the `max_ff_speed` and `max_ff_period` fields contain the maximum average speed on the link and the time period in which those speeds occur.
 
 ```
 update trafficdata.linkmedspd_2013
