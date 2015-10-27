@@ -22,8 +22,26 @@ where yr = 2013 and dow > 1 and dow <7;
 ```
 It's important to run a vaccuum analyze at this point so that the database can actually use the index.
 
+## Speed by Link and Epoch ##
+the linkspd_epoch_2013 contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering.
+
+```
+create table linkspd_epoch_2013 as 
+select link_id, epoch, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, avg(spdidx.samples) sample
+from spdidx
+where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0
+group by link_id, epoch;
+
+alter table linkspd_epoch_2013
+add column start_time time;
+
+update linkspd_epoch_2013
+set start_time = epoch_lookup.start_time 
+from epoch_lookup
+where epoch_lookup.epoch = linkspd_epoch_2013.epoch
+```
 ## Speed by link and time period 
-This table has a unique record for each link (TMC) and columns for average speeds at different time periods.
+This table has a unique record for each link (TMC) and columns for average speeds at different time periods. It's good for joining to shapefiles because there is only one record per link.
 ```
 create table linkmedspd_2013 (
 link_id,
@@ -246,18 +264,4 @@ update trafficdata.linkmedspd_2013
 set am_pti = am_perc_50_median/am_perc_05_median
     pm_pti = pm_perc_50_median/pm_perc_05_median
 
-```
-create table linkspd_epoch_2013 as 
-select link_id, epoch, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, avg(spdidx.samples) sample
-from spdidx
-where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0
-group by link_id, epoch;
 
-alter table linkspd_epoch_2013
-add column start_time time;
-
-update linkspd_epoch_2013
-set start_time = epoch_lookup.start_time 
-from epoch_lookup
-where epoch_lookup.epoch = linkspd_epoch_2013.epoch
-```
