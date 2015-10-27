@@ -81,8 +81,10 @@ max_ff_period text,
 am_perc_05_median numeric,
 pm_perc_05_median numeric,
 am_wtd_mean_05th numeric,
-pm_wtd_mean_05th numeric
-am_pti numeric
+pm_wtd_mean_05th numeric,
+am_perc_50_median numeric,
+pm_perc_50_median numeric,
+am_pti numeric,
 pm_pti numeric);
 
 insert into linkmedspd_2013 (link_id)
@@ -93,7 +95,7 @@ create index linkmedspd_linkidx on linkmedspd_2013(link_id);
 ```
 again, run vaccuum analyze on the table before proceeding in order to take advantage of processing efficiencies.
 
-The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see **planning time index** below).
+The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed, the 5th percentile of the median speed and the weighted mean of the 5th percentile speed, which may be used in planning time index calculations (see **planning time index** below).
 
 ```
 create or replace view linkspdff as
@@ -124,7 +126,7 @@ from linkspdamshld1
 where linkspdamshld1.link_id=linkmedspd_2013.link_id; 
 
 Create or replace view linkspdampeak as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) am_peak_spd, sum(spdidx.samples) sample, percentile_cont(.05)within group(order by _50th) perc_05_median, percentile_cont(.5)within group(order by _50th) perc_50_median
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) am_peak_spd, sum(spdidx.samples) sample, percentile_cont(.05)within group(order by _50th) perc_05_median, sum(_05th*samples)/sum(samples) wtd_mean_05th, percentile_cont(.5)within group(order by _50th) perc_50_median
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >28 and spdidx.epoch < 37
 group by link_id;
@@ -172,7 +174,7 @@ from linkspdpmshld1
 where linkspdpmshld1.link_id=linkmedspd_2013.link_id; 
 
 Create or replace view linkspdpmpeak as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, percentile_cont(.05)within group(order by _50th) perc_05_median, percentile_cont(.5)within group(order by _50th) perc_50_median
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, percentile_cont(.05)within group(order by _50th) perc_05_median, sum(_05th*samples)/sum(samples) wtd_mean_05th, percentile_cont(.5)within group(order by _50th) perc_50_median
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >64 and spdidx.epoch < 73
 group by link_id;
@@ -235,37 +237,33 @@ set max_ff_period = case
 	end;
 ```
 ## Planning Time Index
-The planning time index is a measure of traffic predictability and is the ratio of the 95th percentile travel time to the median travel time. For more info on planning time, see http://www.ops.fhwa.dot.gov/publications/tt_reliability/ttr_report.htm. 
+The planning time index is a measure of traffic predictability and is the ratio of the 95th percentile travel time to the median travel time. For more info on planning time, see http://www.ops.fhwa.dot.gov/publications/tt_reliability/ttr_report.htm.
+
+Since we are computing planning time for each link, (meaning that travel distance is constant) the formula for planning time index is:
+
+	median speed / 5th percentile speed
+
+We used the median of the median (`am_perc_50_median` and `pm_perc_50_median`) and the 5th percentile of the median ( `am_perc_05_median` and `pm_perc_05_median`) to avoid outliers skewing the data. Therefore, this statistic tells us how predictable travel on this road is during the typical morning or evening peak. 
+
+The other option is to use the ratio of weighted average of the median (the period speed) to the weighted average of the 5th percentile (`am_wtd_mean_05th` and `pm_wtd_mean_05th`, also contained in the table). This statistic, not computed in the table but easily computable in arcgis or excel, would show the predictability experienced on that link by the average vehicle. Note that this second measure would be much more sensitive to outliers and data errors. 
+
+```
 update trafficdata.linkmedspd_2013
 set am_perc_05_median=am.perc_05_median,
-	am_wtd_mean_05th=am.wtd_mean_05th
+    am_perc_50_median = am.perc_50_median,
+    am_wtd_mean_05th=am.wtd_mean_05th
 from linkspdampeak am
 where am.link_id= linkmedspd_2013.link_id;
 
 update trafficdata.linkmedspd_2013
 set pm_perc_05_median=pm.perc_05_median,
-	pm_wtd_mean_05th=pm.wtd_mean_05th
+    pm_perc_50_median = pm.perc_50_median,
+    pm_wtd_mean_05th=pm.wtd_mean_05th
 from linkspdpmpeak pm
 where pm.link_id= linkmedspd_2013.link_id;	
 
-alter table linkmedspd_2013
-add column am_perc_50_median numeric;
-
-alter table linkmedspd_2013
-add column pm_perc_50_median numeric;
-
-update linkmedspd_2013
-set am_perc_50_median = am.perc_50_median
-from linkspdampeak am
-where am.link_id= linkmedspd_2013.link_id;
-
-update linkmedspd_2013
-set pm_perc_50_median = pm.perc_50_median
-from linkspdpmpeak pm
-where pm.link_id= linkmedspd_2013.link_id;
-
 update trafficdata.linkmedspd_2013
 set am_pti = am_perc_50_median/am_perc_05_median
-    pm_pti = pm_perc_50_median/pm_perc_05_median
-
+    pm_pti = pm_perc_50_median/pm_perc_05_median;
+```
 
