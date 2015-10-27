@@ -249,21 +249,21 @@ The other option is to use the ratio of weighted average of the median (the peri
 
 ```
 update trafficdata.linkmedspd_2013
-set am_perc_05_median=am.perc_05_median,
+set am_perc_05_median= am.perc_05_median,
     am_perc_50_median = am.perc_50_median,
-    am_wtd_mean_05th=am.wtd_mean_05th
+    am_wtd_mean_05th= am.wtd_mean_05th
 from linkspdampeak am
 where am.link_id= linkmedspd_2013.link_id;
 
 update trafficdata.linkmedspd_2013
-set pm_perc_05_median=pm.perc_05_median,
+set pm_perc_05_median= pm.perc_05_median,
     pm_perc_50_median = pm.perc_50_median,
-    pm_wtd_mean_05th=pm.wtd_mean_05th
+    pm_wtd_mean_05th= pm.wtd_mean_05th
 from linkspdpmpeak pm
 where pm.link_id= linkmedspd_2013.link_id;	
 
 update trafficdata.linkmedspd_2013
-set am_pti = am_perc_50_median/am_perc_05_median
+set am_pti = am_perc_50_median/am_perc_05_median,
     pm_pti = pm_perc_50_median/pm_perc_05_median;
 ```
 
