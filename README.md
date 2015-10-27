@@ -93,7 +93,7 @@ create index linkmedspd_linkidx on linkmedspd_2013(link_id);
 ```
 again, run vaccuum analyze on the table before proceeding in order to take advantage of processing efficiencies.
 
-The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see *planning time index* below).
+The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see **planning time index** below).
 
 ```
 create or replace view linkspdff as
@@ -235,7 +235,7 @@ set max_ff_period = case
 	end;
 ```
 ## Planning Time Index
-The planning time index is a measure of traffic predictability and is the ratio of the 95th percentile travel time to the median travel time. 
+The planning time index is a measure of traffic predictability and is the ratio of the 95th percentile travel time to the median travel time. For more info on planning time, see http://www.ops.fhwa.dot.gov/publications/tt_reliability/ttr_report.htm. 
 update trafficdata.linkmedspd_2013
 set am_perc_05_median=am.perc_05_median,
 	am_wtd_mean_05th=am.wtd_mean_05th
