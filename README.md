@@ -212,8 +212,10 @@ The total sample field represents the *total* number of observations included in
 update linkmedspd_2013
 set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
 ```
-## Maximum free-flow speed
+## Maximum Free Flow speed
+The strategy for computing free flow speed using the 8 pm to 5:30 am period turns out to have a few problems. In some cases, links have such small traffic volumes overnight that they don't have a free flow speed. In other cases, the free flow period speed ends up being slower than the speed on that link in other periods. By definition, free flow speeds should be the fastest average speeds on the link-- otherwise the metrics computed from it (benefits of congestion reduction, for example) would be misleading. Therefore the max_ff_speed and max_ff_period fields contain the maximum average speed on the link and the time period in which those speeds occur.
 
+```
 update trafficdata.linkmedspd_2013
 set max_ff_spd = greatest(ff_spd, am_shld1_spd,am_peak_spd, am_shld2_spd,midday_spd, pm_shld1_spd,pm_peak_spd,pm_shld2_spd, ovrnight_spd);
 
@@ -231,7 +233,9 @@ set max_ff_period = case
 	when max_ff_spd=ovrnight_spd then 'overnight'
 	else 'err'
 	end;
-
+```
+## Planning Time Index
+The planning time index is a measure of traffic predictability and is the ratio of the 95th percentile travel time to the median travel time. 
 update trafficdata.linkmedspd_2013
 set am_perc_05_median=am.perc_05_median,
 	am_wtd_mean_05th=am.wtd_mean_05th
