@@ -1,4 +1,4 @@
-# speeddata-2013
+# Methodology: Processing MS2 Data into Period Speeds
 
 ## The Raw Data
 
