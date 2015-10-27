@@ -62,7 +62,7 @@ create index linkmedspd_linkidx on linkmedspd_2013(link_id);
 ```
 again, run vaccuum analyze on the table before proceeding in order to take advantage of processing efficiencies.
 
-the following queries compute the weighted average speed and sample size in nine periods:
+the next set of queries computes the weighted average speed and sample size in nine periods:
 * **free flow:** 8:00 pm - 5:30 am
 * **am shoulder 1:** 6:00 am - 7:00 am
 * **am peak:** 7:00 am - 9:00 am
@@ -72,9 +72,10 @@ the following queries compute the weighted average speed and sample size in nine
 * **pm peak:** 4:00 pm - 6:00 pm
 * **pm shoulder 2:** 6:00 pm - 8:00 pm
 * **overnight:** 8:00 pm - 6:00 am
-Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the maximum free-flow discussion below for further elaboration on the final free flow speed calculation.
 
-For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see below).
+_Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the *maximum free-flow* discussion below for further elaboration on the final free flow speed calculation._
+
+For the am and pm peak, this script also calculates the median of the median speed and the 5th percentile of the median speed, to be used in planning time index calculations (see *planning time index* below).
 
 ```
 create or replace view linkspdff as
@@ -194,6 +195,7 @@ update linkmedspd_2013
 set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
 ```
 ## Maximum free-flow speed
+
 update trafficdata.linkmedspd_2013
 set max_ff_spd = greatest(ff_spd, am_shld1_spd,am_peak_spd, am_shld2_spd,midday_spd, pm_shld1_spd,pm_peak_spd,pm_shld2_spd, ovrnight_spd);
 
