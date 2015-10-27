@@ -23,7 +23,7 @@ where yr = 2013 and dow > 1 and dow <7;
 It's important to run a vaccuum analyze at this point so that the database can actually use the index.
 
 ## Speed by Link and Epoch ##
-The `linkspd_epoch_2013` table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering. It is available as a csv file for other applications
+The `linkspd_epoch_2013` table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering. It is available as a csv file for other applications.
 
 ```
 create table linkspd_epoch_2013 as 
