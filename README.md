@@ -209,7 +209,7 @@ set ovrnight_spd= linkspdovrnight.speed,
 from linkspdovrnight
 where linkspdovrnight.link_id=linkmedspd_2013.link_id; 
 ```
-The total sample field represents the *total* number of observations included in the estimate. *Note: this is not the average number of samples in this period.*
+The period sample fields and the total sample field represent the *total* number of observations included in the estimate. *Note: this is not the average number of samples in the period.*
 ```
 update linkmedspd_2013
 set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
