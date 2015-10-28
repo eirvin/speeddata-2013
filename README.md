@@ -4,7 +4,7 @@
 
 The table `spdidx` contains the raw data, which includes link id, epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. Note that this data is not the individual vehicle-level speed records, but aggregation of those records in 15 minute increments. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
 
-```
+``` sql
 alter table spdidx
 add column medianxsample numeric;
 
@@ -16,7 +16,7 @@ update spdidx
 ```
 Because the table is quite large and the queries we will be performing will mostly involve a subset of the data (weekday travel in 2013), creating a partial index on the table will reduce processing time:
 
-```
+``` sql
 create index spdidx_epochidx on spdidx (epoch)
 where yr = 2013 and dow > 1 and dow <7;
 ```
@@ -25,7 +25,7 @@ It's important to run a vaccuum analyze at this point so that the database can a
 ## Speed by Link and Epoch ##
 The `linkspd_epoch_2013` table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering. It is available as a csv file for other applications.
 
-```
+``` sql
 create table linkspd_epoch_2013 as 
 select link_id, epoch, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, avg(spdidx.samples) sample
 from spdidx
@@ -52,10 +52,10 @@ The `linkmedspd_2013` table has a unique record for each link (TMC) and fields w
 * **pm shoulder 2:** 6:00 pm - 8:00 pm
 * **overnight:** 8:00 pm - 6:00 am
 
-*Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the __maximum free-flow__ discussion below for further elaboration on the final free flow speed calculation.*
+*Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the [maximum free-flow](#maximum-free-flow-speed) discussion below for further elaboration on the final free flow speed calculation.*
 
 It's good for joining to shapefiles because there is only one record per link.
-```
+``` sql
 create table linkmedspd_2013 (
 link_id,
 ff_spd numeric,
@@ -97,7 +97,7 @@ again, run vaccuum analyze on the table before proceeding in order to take advan
 
 The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed, the 5th percentile of the median speed and the weighted mean of the 5th percentile speed, which may be used in planning time index calculations (see **planning time index** below).
 
-```
+``` sql
 create or replace view linkspdff as
 select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) ff_spd, sum(spdidx.samples) sample
 from spdidx
@@ -210,14 +210,14 @@ from linkspdovrnight
 where linkspdovrnight.link_id=linkmedspd_2013.link_id; 
 ```
 The period sample fields and the total sample field represent the *total* number of observations included in the estimate. *Note: this is not the average number of samples in the period.*
-```
+``` sql
 update linkmedspd_2013
 set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
 ```
 ## Maximum Free Flow speed
 The strategy for computing free flow speed using the 8 pm to 5:30 am period turns out to have a few problems. In some cases, links have such small traffic volumes overnight that they don't have a free flow speed. In other cases, the free flow period speed ends up being slower than the speed on that link in other periods. By definition, free flow speeds should be the fastest average speeds on the link-- otherwise the metrics computed from it (benefits of congestion reduction, for example) would be misleading. Therefore the `max_ff_speed` and `max_ff_period` fields contain the maximum average speed on the link and the time period in which those speeds occur.
 
-```
+``` sql
 update trafficdata.linkmedspd_2013
 set max_ff_spd = greatest(ff_spd, am_shld1_spd,am_peak_spd, am_shld2_spd,midday_spd, pm_shld1_spd,pm_peak_spd,pm_shld2_spd, ovrnight_spd);
 
@@ -246,7 +246,7 @@ Since we are computing planning time for each link, (meaning that travel distanc
 We used the median of the median (`am_perc_50_median` or `pm_perc_50_median`) and the 5th percentile of the median ( `am_perc_05_median` or `pm_perc_05_median`) to avoid outliers skewing the data. **Therefore, this statistic tells us how predictable the average morning or evening peak is.** 
 
 
-```
+``` sql
 update trafficdata.linkmedspd_2013
 set am_perc_05_median= am.perc_05_median,
     am_perc_50_median = am.perc_50_median,
