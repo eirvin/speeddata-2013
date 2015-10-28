@@ -40,7 +40,7 @@ set start_time = epoch_lookup.start_time
 from epoch_lookup
 where epoch_lookup.epoch = linkspd_epoch_2013.epoch
 ```
-## Speed by link and time period 
+## Links and Time Period Speeds
 The `linkmedspd_2013` table has a unique record for each link (TMC) and fields with average speeds at  the following nine time periods:
 * **free flow:** 8:00 pm - 5:30 am
 * **am shoulder 1:** 6:00 am - 7:00 am
@@ -52,7 +52,7 @@ The `linkmedspd_2013` table has a unique record for each link (TMC) and fields w
 * **pm shoulder 2:** 6:00 pm - 8:00 pm
 * **overnight:** 8:00 pm - 6:00 am
 
-_Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the *maximum free-flow* discussion below for further elaboration on the final free flow speed calculation._
+*Note that the free flow period is a subset of the overnight period, in an attempt to capture speeds when roads are at their least congested. See the __maximum free-flow__ discussion below for further elaboration on the final free flow speed calculation.*
 
 It's good for joining to shapefiles because there is only one record per link.
 ```
