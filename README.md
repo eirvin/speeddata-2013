@@ -1,10 +1,11 @@
 # Methodology: Processing MS2 Data into Period Speeds
 ## Contents
 * [The Raw Data](#the-raw-data)
-* [Speed by 15-minute Epoch](#speed-by-link-and-epoch)
+* [Speed by 15-minute Epoch](#speed-by-15-minute-epoch)
 * [Speeds by Modeling Time Period](#speeds-by-modeling-time-period)
 * [Maximum Free Flow Speed](#maximum-free-flow-speed)
 * [Planning Time Index](#planning-time-index)
+
 ## The Raw Data
 
 The table `spdidx` contains the raw data, which includes link id, epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. Note that this data is not the individual vehicle-level speed records, but aggregation of those records in 15 minute increments. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
