@@ -103,7 +103,7 @@ create index linkmedspd_linkidx on linkmedspd_2013(link_id);
 ```
 again, run vaccuum analyze on the table before proceeding in order to take advantage of processing efficiencies.
 
-The next set of queries computes the weighted average speed and sample size in the nine periods. To estimate traffic volume during each time period, we calculated the average number of samples per 15-minute epoch and multiplied by the number of epochs in the time period. 
+The next set of queries computes the weighted average speed and sample size in the nine periods. To estimate traffic volume during each time period, we calculated the average number of samples per 15-minute epoch and multiplied by the number of epochs in the time period. The `[timeperiod]_samp` fields thus contain an average daily volume for each period. Note that the time periods are different lengths, to compare hourly volume, each field will need to be divided by the number of hours in the period (ex: am peak- divide by 2, midday- divide by 4, etc).
 
 For the am and pm peak, this script also calculates the median of the median speed, the 5th percentile of the median speed and the weighted mean of the 5th percentile speed, which may be used in planning time index calculations (see [planning time index](#planning-time-index) below).
 
