@@ -1,5 +1,10 @@
 # Methodology: Processing MS2 Data into Period Speeds
-
+## Contents
+* [The Raw Data](#the-raw-data)
+* [Speed by 15-minute Epoch](#speed-by-link-and-epoch)
+* [Speeds by Modeling Time Period](#speeds-by-modeling-time-period)
+* [Maximum Free Flow Speed](#maximum-free-flow-speed)
+* [Planning Time Index](#planning-time-index)
 ## The Raw Data
 
 The table `spdidx` contains the raw data, which includes link id, epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. Note that this data is not the individual vehicle-level speed records, but aggregation of those records in 15 minute increments. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
@@ -22,7 +27,7 @@ where yr = 2013 and dow > 1 and dow <7;
 ```
 It's important to run a vaccuum analyze at this point so that the database can actually use the index.
 
-## Speed by Link and Epoch ##
+## Speed by 15-Minute Epoch ##
 The `linkspd_epoch_2013` table contains one record for each combination of link and epoch, along with the weighted average speed and the average number of samples. because this table contains 96 records for each of almost 20,000 links, this table contains over a million rows and is unsuitable for being joined to shapefiles or exported for use in excel without further filtering. It is available as a csv file for other applications.
 
 ``` sql
@@ -40,7 +45,7 @@ set start_time = epoch_lookup.start_time
 from epoch_lookup
 where epoch_lookup.epoch = linkspd_epoch_2013.epoch
 ```
-## Links and Time Period Speeds
+## Speeds by Modeling Time Period
 The `linkmedspd_2013` table has a unique record for each link (TMC) and fields with average speeds at  the following nine time periods:
 * **free flow:** 8:00 pm - 5:30 am
 * **am shoulder 1:** 6:00 am - 7:00 am
