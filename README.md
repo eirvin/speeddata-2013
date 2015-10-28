@@ -8,7 +8,7 @@
 
 ## The Raw Data
 
-The table `spdidx` contains the raw data, which includes link id, epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. Note that this data is not the individual vehicle-level speed records, but aggregation of those records in 15 minute increments. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
+The table `spdidx` contains the raw data, which includes link id, 15-minute epoch, day of week, day of month, year, average speed, maximum speed, minimum speed, information on whether the record is an estimate or an actual observation, number of samples, and 5th through 95th percentile speeds at 5% intervals. Note that this data is not the individual vehicle-level speed records, but aggregation of those records in 15 minute increments. To avoid individual measurement errors skewing the overall estimates, we decided to compute the average of median speed instead of average speed for each link during particular time period. Because estimates with more samples are more reliable, we weighted the median by the sample size. We also excluded estimates from our analysis and only used actual observed data. The following code multiplies median speed by sample size for all non-estimate records with a sample size greater than 10: 
 
 ``` sql
 alter table spdidx
@@ -44,7 +44,7 @@ add column start_time time;
 update linkspd_epoch_2013
 set start_time = epoch_lookup.start_time 
 from epoch_lookup
-where epoch_lookup.epoch = linkspd_epoch_2013.epoch
+where epoch_lookup.epoch = linkspd_epoch_2013.epoch;
 ```
 ## Speeds by Modeling Time Period
 The `linkmedspd_2013` table has a unique record for each link (TMC) and fields with average speeds at  the following nine time periods:
@@ -62,8 +62,9 @@ The `linkmedspd_2013` table has a unique record for each link (TMC) and fields w
 
 It's good for joining to shapefiles because there is only one record per link.
 ``` sql
+drop table if exists linkmedspd_2013;
 create table linkmedspd_2013 (
-link_id,
+link_id text,
 ff_spd numeric,
 am_shld1_spd numeric,
 am_peak_spd numeric,
@@ -73,15 +74,16 @@ pm_shld1_spd numeric,
 pm_peak_spd numeric,
 pm_shld2_spd numeric,
 ovrnight_spd numeric,
-am_shld1_samp bigint,
-am_peak_samp bigint,
-am_shld2_samp bigint,
-midday_samp bigint,
-pm_shld1_samp bigint,
-pm_peak_samp bigint,
-pm_shld2_samp bigint,
-ovrnight_samp bigint,
-tot_samp bigint,
+ff_samp numeric,
+am_shld1_samp numeric,
+am_peak_samp numeric,
+am_shld2_samp numeric,
+midday_samp numeric,
+pm_shld1_samp numeric,
+pm_peak_samp numeric,
+pm_shld2_samp numeric,
+ovrnight_samp numeric,
+tot_samp numeric,
 max_ff_spd numeric,
 max_ff_period text,
 am_perc_05_median numeric,
@@ -101,122 +103,148 @@ create index linkmedspd_linkidx on linkmedspd_2013(link_id);
 ```
 again, run vaccuum analyze on the table before proceeding in order to take advantage of processing efficiencies.
 
-The next set of queries computes the weighted average speed and sample size in the nine periods. For the am and pm peak, this script also calculates the median of the median speed, the 5th percentile of the median speed and the weighted mean of the 5th percentile speed, which may be used in planning time index calculations (see [planning time index](#planning-time-index) below).
+The next set of queries computes the weighted average speed and sample size in the nine periods. To estimate traffic volume during each time period, we calculated the average number of samples per 15-minute epoch and multiplied by the number of epochs in the time period. 
+
+For the am and pm peak, this script also calculates the median of the median speed, the 5th percentile of the median speed and the weighted mean of the 5th percentile speed, which may be used in planning time index calculations (see [planning time index](#planning-time-index) below).
+
+This part of the code takes a while to run, so the commit points help with automation and preserving the data in the event of a database malfunction.
 
 ``` sql
+begin;
+drop view linkspdff;
 create or replace view linkspdff as
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) ff_spd, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and (spdidx.epoch >80 or spdidx.epoch < 23)
 group by link_id;
 
-alter table linkmedspd_2013
-add column ff_samp;
-
 update linkmedspd_2013
 set ff_spd= linkspdff.speed,
-	ff_samp= linkspdff.sample
+    ff_samp= (linkspdff.sample/linkspdff.records)*38
 from linkspdff
 where linkspdff.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdamshld1;
 Create or replace view linkspdamshld1 as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) am_shld1_spd, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >24 and spdidx.epoch < 29
 group by link_id;
 
 update linkmedspd_2013
-set am_shld1_spd= linkspdamshld1.am_shld1_spd,
-	am_shld1_samp= linkspdamshld1.sample
+set am_shld1_spd= linkspdamshld1.speed,
+    am_shld1_samp= (linkspdamshld1.sample/linkspdamshld1.records)*4
 from linkspdamshld1
 where linkspdamshld1.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdampeak;
 Create or replace view linkspdampeak as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) am_peak_spd, sum(spdidx.samples) sample, percentile_cont(.05)within group(order by _50th) perc_05_median, sum(_05th*samples)/sum(samples) wtd_mean_05th, percentile_cont(.5)within group(order by _50th) perc_50_median
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records, percentile_cont(.05)within group(order by _50th) perc_05_median, sum(_05th*samples)/sum(samples) wtd_mean_05th, percentile_cont(.5)within group(order by _50th) perc_50_median
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >28 and spdidx.epoch < 37
 group by link_id;
 
 update linkmedspd_2013
-set am_peak_spd= linkspdampeak.am_peak_spd,
-	am_peak_samp=linkspdampeak.am_peak_samp
+set am_peak_spd= linkspdampeak.speed,
+    am_peak_samp=(linkspdampeak.sample/linkspdampeak.records)*8
 from linkspdampeak
 where linkspdampeak.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdamshld2;
 Create or replace view linkspdamshld2 as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) am_shld2_spd, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >36 and spdidx.epoch < 41
 group by link_id;
 
 update linkmedspd_2013
-set am_shld2_spd= linkspdamshld2.am_shld2_spd,
-	am_shld2_samp= linkspdamshld2.sample
+set am_shld2_spd= linkspdamshld2.speed,
+    am_shld2_samp= (linkspdamshld2.sample/linkspdamshld2.records)*4
 from linkspdamshld2
 where linkspdamshld2.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdmidday;
 Create or replace view linkspdmidday as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) midday_spd, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >40 and spdidx.epoch < 57
 group by link_id;
 
 update linkmedspd_2013
-set midday_spd= linkspdmidday.midday_spd,
-	midday_samp=linkspdmidday.sample
+set midday_spd= linkspdmidday.speed,
+    midday_samp=(linkspdmidday.sample/linkspdmidday.records)*16
 from linkspdmidday
 where linkspdmidday.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdpmshld1;
 Create or replace view linkspdpmshld1 as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >56 and spdidx.epoch < 65
 group by link_id;
 
 update linkmedspd_2013
 set pm_shld1_spd= linkspdpmshld1.speed,
-	pm_shld1_samp=linkspdpmshld1.sample
+    pm_shld1_samp=(linkspdpmshld1.sample/linkspdpmshld1.records)*8
 from linkspdpmshld1
 where linkspdpmshld1.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdpmpeak;
 Create or replace view linkspdpmpeak as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, percentile_cont(.05)within group(order by _50th) perc_05_median, sum(_05th*samples)/sum(samples) wtd_mean_05th, percentile_cont(.5)within group(order by _50th) perc_50_median
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records, percentile_cont(.05)within group(order by _50th) perc_05_median, sum(_05th*samples)/sum(samples) wtd_mean_05th, percentile_cont(.5)within group(order by _50th) perc_50_median
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >64 and spdidx.epoch < 73
 group by link_id;
 
 update linkmedspd_2013
 set pm_peak_spd= linkspdpmpeak.speed,
-	pm_peak_samp=linkspdpmpeak.sample
+    pm_peak_samp=(linkspdpmpeak.sample/linkspdpmpeak.records)*8
 from linkspdpmpeak
 where linkspdpmpeak.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdpmshld2;
 Create or replace view linkspdpmshld2 as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and spdidx.epoch >72 and spdidx.epoch < 81
 group by link_id;
 
 update linkmedspd_2013
 set pm_shld2_spd= linkspdpmshld2.speed,
-	pm_shld2_samp=linkspdpmshld2.sample
+    pm_shld2_samp=(linkspdpmshld2.sample/linkspdpmshld2.records)*8
 from linkspdpmshld2
 where linkspdpmshld2.link_id=linkmedspd_2013.link_id; 
+commit;
 
+begin;
+drop view linkspdovrnight;
 Create or replace view linkspdovrnight as 
-select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample
+select link_id, sum(spdidx.medianxsample)/sum(spdidx.samples) speed, sum(spdidx.samples) sample, count(recordno) records
 from spdidx
 where spdidx.yr=2013 and spdidx.dow >1 and spdidx.dow < 7 and spdidx.medianxsample > 0 and (spdidx.epoch >80 or spdidx.epoch < 25)
 group by link_id;
 
 update linkmedspd_2013
 set ovrnight_spd= linkspdovrnight.speed,
-	ovrnight_samp=linkspdovrnight.sample
+    ovrnight_samp=(linkspdovrnight.sample/linkspdovrnight.records)*40
 from linkspdovrnight
-where linkspdovrnight.link_id=linkmedspd_2013.link_id; 
-```
-The period sample fields and the total sample field represent the *total* number of observations included in the estimate. *Note: this is not the average number of samples in the period.*
-``` sql
+where linkspdovrnight.link_id=linkmedspd_2013.link_id;
+commit;
+
 update linkmedspd_2013
 set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
 ```
