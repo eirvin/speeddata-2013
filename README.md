@@ -246,7 +246,7 @@ where linkspdovrnight.link_id=linkmedspd_2013.link_id;
 commit;
 
 update linkmedspd_2013
-set tot_samp= am_shld1_samp+am_peak_samp+am_shld2_samp+midday_samp+pm_shld1_samp+pm_shld2_samp+ovrnight_samp;
+set tot_samp= coalesce(am_shld1_samp,0)+coalesce(am_peak_samp,0)+coalesce(am_shld2_samp,0)+coalesce(midday_samp,0)+coalesce(pm_shld1_samp,0)+coalesce(pm_shld2_samp,0)+coalesce(ovrnight_samp,0);
 ```
 ## Maximum Free Flow speed
 The strategy for computing free flow speed using the 8 pm to 5:30 am period turns out to have a few problems. In some cases, links have such small traffic volumes overnight that they don't have a free flow speed. In other cases, the free flow period speed ends up being slower than the speed on that link in other periods. By definition, free flow speeds should be the fastest average speeds on the link-- otherwise the metrics computed from it (benefits of congestion reduction, for example) would be misleading. Therefore the `max_ff_speed` and `max_ff_period` fields contain the maximum average speed on the link and the time period in which that speed occurs.
